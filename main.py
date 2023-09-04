@@ -38,14 +38,14 @@ y = np.ones((4,x.size))
 phi2 = parameter.phi2
 
 #Solver
-solution = solve_bvp(model.nth_order_non_isothermal,boundary.bc_nonisothermal,x,y,verbose=2)
+solution = solve_bvp(model.nth_order_non_isothermal_autocatalytic,boundary.bc_nonisothermal_autocatalytic,x,y,verbose=2)
 
 
 
 #Storing data in a dataframe
 df = pd.DataFrame()
 df['r'] = x
-df['C'] = solution.sol(x)[0]
+df['C'] = parameter.Co*(1 - solution.sol(x)[0])
 df['dC'] = solution.sol(x)[1]
 df['T'] = solution.sol(x)[2]
 df['dT'] = solution.sol(x)[3]
