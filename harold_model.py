@@ -11,8 +11,8 @@ import parameter
 
 #Intial guess
 G = []
-G.append(1000)
-G.append(0.003)
+G.append(100000)
+G.append(0.3)
 
 #This module describes all the transport equations involved
 def pelleteqns(x,y):
@@ -24,12 +24,26 @@ def pelleteqns(x,y):
         #Energy Balance
         #dy(3)=y(4);
         #dy(4)=-parameter.P[15]*G(2)*y(1)*np.exp(parameter.P[14]*(1-1/y(3)));
+       
+        # return np.vstack((y[1],
+        #               parameter.A/parameter.D*np.exp(-parameter.Ea/parameter.R/y[2])*y[0]**parameter.n,
+        #               y[3],
+        #               parameter.A/parameter.keff*(-parameter.delH)*y[0]**parameter.n))#*np.exp(-parameter.Ea/parameter.R/y[2])*y[0]))
+       
         
         return np.vstack((y[1],
                          parameter.P[17]*parameter.P[2]*G[0]*y[1] + G[1]*y[0]*np.exp(parameter.P[14]*(1-1/y[2]))*(1-parameter.P[18]*y[0])-y[1]*parameter.P[18]*(y[1]-parameter.P[17]*G[0]*parameter.P[2]*y[0])/(1-parameter.P[18]*y[0]),
                          y[3],
                          -parameter.P[15]*G[1]*y[0]*np.exp(parameter.P[14]*(1-1/y[2]))))
-        
+       
+def bc_nonisothermal(ya,yb):
+    """
+    BC1: Inlet concenteration is equal to Ci
+    BC2: At outlet dC/dr = 0 as no further change in concentration C
+    BC3: Inlet temperature is equal to Ti
+    BC4: At outlet dT/dr = 0 as no further change in Temperature T
+    """
+    return np.array([ya[0] - parameter.Co ,yb[1],ya[2] - parameter.To,yb[3]]) 
 
 
 def boundaryconditions(ya,yb):
@@ -38,9 +52,9 @@ def boundaryconditions(ya,yb):
 #ya[1]: Mole fraction gradient
 #ya[2]: Temperature at wetted end
 #ya[3]: Temparture gradient at wetted end
-    return np.array([ya[0]-(parameter.P[8]*np.exp((-parameter.P[11]*parameter.P[19]*parameter.P[3])/(parameter.P[6]*parameter.P[19]*ya[2])+parameter.P[5]*(1-parameter.P[9]/(parameter.P[19]*ya[1])))),#mole frac at interface
+    return np.array([ya[0]- 0.9,#(parameter.P[8]*np.exp((-parameter.P[11]*parameter.P[19]*parameter.P[3])/(parameter.P[6]*parameter.P[19]*ya[2])+parameter.P[5]*(1-parameter.P[9]/(parameter.P[19]*ya[1])))),#mole frac at interface
                      ya[1]+parameter.P[2]*(1-parameter.P[6]*ya[0])*G[0],#mole frac gradient  at interface
-                     ya[2]-1.2,# gas temperatuer at non wetted end 
+                     ya[2]-1.1,# gas temperatuer at non wetted end 
                      #ya[3]-0.5,# gas tempaerature gradient #NEEDS TO be replaced with actual equation
                      ya[3] - parameter.P[1]*G[0]*parameter.P[3]/(parameter.P[7]*parameter.P[19])*(parameter.P[9] + parameter.P[4]/(parameter.P[1]*parameter.P[3]) - (parameter.P[19]*ya[2] - np.exp(parameter.P[12]*parameter.P[1]))/(1-np.exp(parameter.P[12]*parameter.P[1])))
                     ])
@@ -71,10 +85,10 @@ def harold_model(G):
     dwg=(parameter.P[1]*G[0]*parameter.P[3])/(parameter.P[7]*parameter.P[19])*(parameter.P[9]+parameter.P[4]/(parameter.P[1]*parameter.P[3])-(parameter.P[19]*wg-np.exp(parameter.P[12]*parameter.P[1]))/(1-np.exp(parameter.P[12]*parameter.P[1])));
 
     #Initializing the guesses
-    y[0][:] = np.ones((1,x.size))*u
-    y[1][:] = np.ones((1,x.size))*du 
-    y[2][:] = np.ones((1,x.size))*wg
-    y[3][:] = np.ones((1,x.size))*dwg
+    y[0][:] = np.ones((1,x.size))#*u
+    y[1][:] = np.ones((1,x.size))#*du 
+    y[2][:] = np.ones((1,x.size))#*wg
+    y[3][:] = np.ones((1,x.size))#*dwg
     #print(y[0])
 
 
@@ -87,20 +101,25 @@ def harold_model(G):
     df['dU'] = solution.sol(x)[1]
     df['W'] = solution.sol(x)[2]
     df['dW'] = solution.sol(x)[3]
+   
+    print(df.U) 
+    print(df.W)
+    yt = abs((df['U'].iloc[-1]**2 - 1) + (df['W'].iloc[-1]**2 -1)) 
+    print("The value of residual is", yt) 
+     
+    return 100*abs((df['U'].iloc[-1]**2 - 1) + (df['W'].iloc[-1]**2 -1))
+        
+    #fig,axes = plt.subplots(2,2)
 
-    return abs((df['U'].iloc[-1]**2 - 1) + (df['W'].iloc[-1]**2 -1))
-    
-# fig,axes = plt.subplots(2,2)
-
-# #plotting subplots
-# sns.lineplot(data=df,x = 'r', y= 'U', ax = axes[0,0])
-# sns.lineplot(data=df,x = 'r', y= 'dU', ax = axes[0,1])
-# sns.lineplot(data=df,x = 'r', y= 'W', ax = axes[1,0])
-# sns.lineplot(data=df,x = 'r', y= 'dW', ax = axes[1,1])
-# plt.show()
+    #plotting subplots
+    # sns.lineplot(data=df,x = 'r', y= 'U', ax = axes[0,0])
+    # sns.lineplot(data=df,x = 'r', y= 'dU', ax = axes[0,1])
+    # sns.lineplot(data=df,x = 'r', y= 'W', ax = axes[1,0])
+    # sns.lineplot(data=df,x = 'r', y= 'dW', ax = axes[1,1])
+    # plt.show()
 
 
 
 result = minimize(harold_model,G)
-print(result.x)
+print(result)
 
