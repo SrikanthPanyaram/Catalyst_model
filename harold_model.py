@@ -1,6 +1,4 @@
 import math
-import model
-import boundary
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,6 +7,8 @@ import seaborn as sns
 from scipy.integrate import solve_bvp
 from scipy.optimize import minimize
 
+import boundary
+import model
 import parameter
 
 #Intial guess
