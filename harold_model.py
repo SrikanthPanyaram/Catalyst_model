@@ -43,26 +43,7 @@ def pelleteqns(x,y):
                          y[3],
                          -parameter.P[15]*G[1]*y[0]*np.exp(parameter.P[14]*(1-1/y[2]))))
        
-def bc_nonisothermal(ya,yb):
-    """
-    BC1: Inlet concenteration is equal to Ci
-    BC2: At outlet dC/dr = 0 as no further change in concentration C
-    BC3: Inlet temperature is equal to Ti
-    BC4: At outlet dT/dr = 0 as no further change in Temperature T
-    """
-    return np.array([ya[0] - parameter.Co ,yb[1],ya[2] - 1,yb[3]]) 
 
-
-def boundaryconditions1(ya,yb):
-    print("Value in bc", G)
-    return np.array([
-                      ya[0]-(parameter.P[8]*np.exp((-parameter.P[11]*parameter.P[19]*parameter.P[3])/(parameter.P[6]*parameter.P[19]*wg)+parameter.P[5]*(1-parameter.P[9]/(parameter.P[19]*ya[2])))), #mole frac at interface
-                      ya[1] + parameter.P[2]*(1-parameter.P[6]*u)*G[0], #mole frac gradient  at interface
-                      yb[2] - 1, #temperatuer at non wetted end
-                      yb[0] - 1, #mole fraction at non wetted end 
-    ]
-        
-    )
 
 
 
@@ -80,19 +61,6 @@ def boundaryconditions(ya,yb):
                     ])
 
 
-
-#def function harold_model(G):
-    
-#P=[Ph,Pm,C,V,H,yba,k,uo,woL,pf,pc,p,z,gamma,beta,v,Y1,Y2,T]
-#---1, 2, 3,4,5,6,  7,8, 9,  10, 1,2,3,4,    5,   6,7, 8, 9
-
-#Initializing guess vlaues
-#--------------------------------------------------------------------------
-#options=optimset('MaxFunEvals',2000];
-
-#UB=(pc*T*C/yba+H*woL]/(H+log(uo*yba));
-#[xval,fval,exitflag]=fminsearch(@profile,0.98,options];
-#wg=1;``
 
 
 def harold_model(G):
@@ -119,7 +87,7 @@ def harold_model(G):
 
 
     #solution = solve_bvp(model.nth_order_non_isothermal ,boundary.bc_nonisothermal   boundaryconditions, x, y, verbose=2)
-    solution = solve_bvp(pelleteqns ,boundaryconditions1,x, y, verbose=2)
+    solution = solve_bvp(pelleteqns ,boundaryconditions,x, y, verbose=2)
 
     #Storing data in a dataframe
     df = pd.DataFrame()
@@ -150,14 +118,9 @@ def harold_model(G):
 #     return(abs(100 - G[0]))
 
 
-
-phi_list = []
-phi_list = [0.0001]
+phi_list = [0.0001] 
 for i in phi_list:
-    G = [];
-    G.append(10)
-    G.append(i)
-    result = minimize(harold_model,G)
-    print(result.x[0],result.x[1])
-# print(T_final, G_final)
+    G = [10, i]
+    result = minimize(harold_model, G)
+    print(result.x[0], result.x[1])
 
