@@ -22,7 +22,7 @@ u = 1.0
 
 #This module describes all the transport equations involved
 def pelleteqns(x,y,G):
-        
+        print("Value of G for ode", G) 
         #dy=zeros(4,1);#arrays to store the diff eqns
         #Mass balance
         #dy(1)=y(2);
@@ -41,7 +41,15 @@ def pelleteqns(x,y,G):
                          -parameter.P[15]*G[1]*y[0]*np.exp(parameter.P[14]*(1-1/y[2]))))
        
 
+def boundaryconditions1(ya,yb,G):
+    return np.array([
+                      ya[0]-(parameter.P[8]*np.exp((-parameter.P[11]*parameter.P[19]*parameter.P[3])/(parameter.P[6]*parameter.P[19]*wg)+parameter.P[5]*(1-parameter.P[9]/(parameter.P[19]*ya[2])))), #mole frac at interface
+                      ya[1] + parameter.P[2]*(1-parameter.P[6]*ya[0])*G[0], #mole frac gradient  at interface
+                      yb[2] - 1, #temperatuer at non wetted end
+                      yb[0] - 1, #mole fraction at non wetted end  
+    ]
 
+    )
 
 
 def boundaryconditions(ya,G):
@@ -50,9 +58,10 @@ def boundaryconditions(ya,G):
 #ya[1]: Mole fraction gradient
 #ya[2]: Temperature at wetted end
 #ya[3]: Temparture gradient at wetted end
+    print("Value of G  for boundary conditions", G)
     return np.array([ya[0] - (parameter.P[8]*np.exp((-parameter.P[11]*parameter.P[19]*parameter.P[3])/(parameter.P[6]*parameter.P[19]*ya[2])+parameter.P[5]*(1-parameter.P[9]/(parameter.P[19]*ya[1])))),#mole frac at interface
                      ya[1] + parameter.P[2]*(1-parameter.P[6]*ya[0])*G[0],#mole frac gradient  at interface
-                     ya[2] - 1.1,# gas temperatuer at non wetted end 
+                     ya[2] - 1.0,# gas temperatuer at non wetted end 
                      #ya[3]-0.5,# gas tempaerature gradient #NEEDS TO be replaced with actual equation
                      ya[3] + parameter.P[1]*G[0]*parameter.P[3]/(parameter.P[7]*parameter.P[19])*(parameter.P[9] + parameter.P[4]/(parameter.P[1]*parameter.P[3]) - (parameter.P[19]*ya[2] - np.exp(parameter.P[12]*parameter.P[1]))/(1-np.exp(parameter.P[12]*parameter.P[1])))
                     ])
@@ -66,14 +75,20 @@ def harold_model(G):
     y = np.ones((4,x.size))
     
     
+    
+    
+    
     #Defining terms for initial conditions
+    
+    
+    
+    wg = 1.0
     #u = u1_0*exp(-u1_1 + u1_2)
     u1_0 = parameter.P[8]
     u1_1 = parameter.P[11]*parameter.P[3]/parameter.P[6]*1/wg 
-    u1_2 = 
-
-    wg = 1
-    u=parameter.P[8]*np.exp((-parameter.P[11]*parameter.P[19]*parameter.P[3])/(parameter.P[6]*parameter.P[19]*wg)+parameter.P[5]*(1-parameter.P[9]/(parameter.P[19]*wg)));
+    u1_2 = parameter.P[5]*(1 - parameter.P[9]/(parameter.P[19]*wg)) 
+    u = u1_0*np.exp(-u1_1 + u1_2)
+    #u=parameter.P[8]*np.exp((-parameter.P[11]*parameter.P[19]*parameter.P[3])/(parameter.P[6]*parameter.P[19]*wg)+parameter.P[5]*(1-parameter.P[9]/(parameter.P[19]*wg)));
     du=-parameter.P[2]*(1-parameter.P[6]*u)*G[0];
     dwg=(parameter.P[1]*G[0]*parameter.P[3])/(parameter.P[7]*parameter.P[19])*(parameter.P[9]+parameter.P[4]/(parameter.P[1]*parameter.P[3])-(parameter.P[19]*wg-np.exp(parameter.P[12]*parameter.P[1]))/(1-np.exp(parameter.P[12]*parameter.P[1])));
 
@@ -92,7 +107,7 @@ def harold_model(G):
 
     #solution = solve_bvp(model.nth_order_non_isothermal ,boundary.bc_nonisothermal   boundaryconditions, x, y, verbose=2)
     solution = solve_bvp(lambda x, y:pelleteqns(x, y, G),
-                         lambda x, y:boundaryconditions(y, G),
+                         lambda ya, yb:boundaryconditions1(ya, yb, G),
                          x, y)
 
     #Storing data in a dataframe
@@ -106,15 +121,20 @@ def harold_model(G):
 
     print(df.U.iloc[-1]) 
     print(df.W.iloc[-1])
-    yt = abs((df['U'].iloc[-1]**2 - 1) + (df['W'].iloc[-1]**2 -1)) 
-    print("The value of residual is", yt)
-    return(100*abs((df['U'].iloc[-1]**2 - 1) + (df['W'].iloc[-1]**2 -1)))
+    yt = 1000*abs((df['U'].iloc[-1] - 1)**2 + (df['W'].iloc[-1]**2 -1)**2) 
+    print("The value of residual is", yt, df['U'].iloc[-1], df['W'].iloc[-1])
+    return(1000*((df['U'].iloc[-1] - 1)**2 + (df['W'].iloc[-1] -1)**2))
 
 
 
-phi_list = [0.000001] 
+phi_list = [0.000001,0.00001,0.0001,0.001,0.01,0.1,1.0]
+Gamma_final = []
+phi_final = [] 
 for i in phi_list:
     G = [1000000, i]
     result = minimize(harold_model, G)
-    print(result.x[0], result.x[1])
+    Gamma_final.append(G[0])
+    phi_final.append(G[1])
+
+print(Gamma_final, phi_final)
 
